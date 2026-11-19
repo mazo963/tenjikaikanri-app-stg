@@ -18,7 +18,7 @@ if (!store.get('url')) $('settings').classList.remove('hidden');
 $('btnSettings').onclick = () => $('settings').classList.toggle('hidden');
 $('btnSaveCfg').onclick = () => {
   Object.entries(CFG).forEach(([k, id]) => store.set(k, k === 'token' || k === 'sig' ? $(id).value : $(id).value.trim()));
-  $('settings').classList.add('hidden'); status('設定を保存しました');
+  $('settings').classList.add('hidden'); status('設定を保存しました'); if (typeof showEv === 'function') showEv();
 };
 $('btnTest').onclick = async () => {
   store.set('url', $('cfgUrl').value.trim()); store.set('token', $('cfgToken').value);
@@ -139,7 +139,8 @@ function style() { return { tone: store.get('tone') || 'standard', length: store
 // ---------- 今日の登録数 ----------
 function today() { return new Date().toISOString().slice(0, 10); }
 function bumpCount() { const k = 'cnt_' + today(); store.set(k, String((+store.get(k) || 0) + 1)); showCount(); }
-function showCount() { $('count').textContent = '本日 ' + (+store.get('cnt_' + today()) || 0) + '件'; }
+function showEv() { $('evChip').textContent = store.get('event') || ''; }
+function showCount() { showEv(); $('count').textContent = '本日 ' + (+store.get('cnt_' + today()) || 0) + '件'; }
 showCount();
 
 // ---------- 画像(縮小してJPEG化) ----------
@@ -379,11 +380,17 @@ async function loadList() {
 function dl(parent, label, value) { if (!value) return; parent.append(el('dt', '', label), el('dd', '', value)); }
 
 function renderCard(it) {
-  const card = el('div', 'card'), hd = el('div', 'hd');
-  const nm = el('div', 'nm', `${it.company} ${it.name}`);
-  if (it.temp) nm.append(el('span', 'tag ' + (it.temp === '高' ? 'hi' : it.temp === '中' ? 'mid' : ''), it.temp));
-  hd.append(nm, el('div', 'sub', `${it.date} ${it.event} / ${it.status || '未対応'}`));
-  if (it.next) hd.append(el('div', 'sub', '次: ' + it.next));
+  const card = el('div', 'card li'), top = el('div', 'hd');
+  const av = el('div', 'av c' + ((it.name || '').charCodeAt(0) % 4), (it.name || it.company || '?').charAt(0));
+  if (av.className.endsWith('c0')) av.className = 'av';
+  const g = el('div', 'g');
+  g.append(el('div', 'nm', it.name || it.company), el('div', 'sub', it.company || ''), el('div', 'meta', `${it.date} ・ ${it.event || ''}`));
+  const r = el('div', 'r');
+  if (it.temp) r.append(el('span', 'tag ' + (it.temp === '高' ? 'hi' : it.temp === '中' ? 'mid' : ''), it.temp));
+  const st = it.status || '未対応';
+  r.append(el('span', 'stt' + (st === 'メール送信済' || st === '受注' ? ' ok' : st === '商談中' ? ' pr' : ''), st));
+  top.append(av, g, r);
+  const hd = top;
   const detail = el('div', 'detail hidden');
   let built = false;
   hd.onclick = () => { if (!built) { buildDetail(detail, it); built = true; } detail.classList.toggle('hidden'); };

@@ -7,7 +7,15 @@ const images = { front: '', back: '' };
 let busy = false;
 let matches = [];
 
-function status(msg, err) { const s = $('status'); s.textContent = msg; s.className = err ? 'err' : ''; }
+let toastT = null;
+function status(msg, err) {
+  const s = $('status'); s.textContent = msg; s.className = err ? 'err' : '';
+  // 一覧の画面では、上の「状態」の行が隠れているため、画面の下に、一時的に表示する
+  const t = $('toast'); if (!t) return;
+  clearTimeout(toastT);
+  if (!msg || $('viewList').classList.contains('hidden')) { t.classList.add('hidden'); return; }
+  t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); toastT = setTimeout(() => t.classList.add('hidden'), err ? 12000 : 5000);
+}
 function setBusy(b) { busy = b; ['btnAnalyze', 'btnSave', 'btnHold', 'btnMerge', 'btnNew'].forEach(i => $(i).disabled = b); }
 
 // ---------- 設定 ----------

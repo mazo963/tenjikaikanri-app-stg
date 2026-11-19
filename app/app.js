@@ -37,7 +37,7 @@ $('btnTest').onclick = async () => {
     if (j.net) return status('⚠ 接続OK。ただし、このGoogleアカウントでは、AIへの通信(UrlFetch)が使えません(' + String(j.net).slice(0, 90) + ')。24時間後にもう一度試すか、別のGoogleアカウントで設置してください', true);
     const sel = $('cfgMail').value;
     if (j.gmail === false && sel === 'gmail') return status('⚠ 接続OK。ただし、このGoogleアカウントではGmailが使えません。「メール方式」を「メールアプリで開く」にしてください', true);
-    status('✅ 接続OK(APIキー設定済み・Gmail' + (j.gmail === false ? '利用不可' : '利用可') + ')');
+    status('✅ 接続OK(APIキー設定済み・Gmail' + (j.gmail === false ? '利用不可' : '利用可') + '・GASの版: ' + (j.version || '古い版(v3以前)') + ')');
   } catch (e) { status(e.message, true); }
 };
 // ---------- かんたん設定(スプレッドシートのメニューで作った「設定コード」を貼るだけ) ----------
@@ -476,7 +476,10 @@ function buildDetail(box, it) {
       if (!$('q').value.trim()) store.set('total', String(listTotal));
       renderList(); status('✅ 削除しました(シートの「削除済み」に残っています)');
     } catch (e) {
-      status(/unknown action/i.test(e.message) ? '削除には、Code.gs の更新(v4以降)が必要です' : e.message, true);
+      if (/unknown action/i.test(e.message)) {
+        let v = '不明'; try { v = (await api({ action: 'ping' })).version || '古い版(v3以前)'; } catch {}
+        status('削除には、Code.gs v4.1以降が必要です。いま接続中のGASの版: ' + v + '。貼り替えと「新バージョンでデプロイ」を確認してください(設定のURLが、貼り替えたシートのものかも確認)', true);
+      } else status(e.message, true);
       del.disabled = false;
     }
   };

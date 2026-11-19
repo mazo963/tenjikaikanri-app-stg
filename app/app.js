@@ -456,6 +456,24 @@ function buildDetail(box, it) {
   const sl = el('div', 'sub', '対応状況'); sl.style.marginTop = '8px';
   box.append(sl, sel);
 
+  // 削除(確認のうえ、シートの「削除済み」に写してから消す)
+  const delRow = el('div'); delRow.style.cssText = 'margin-top:14px;text-align:right';
+  const del = el('button', 'sec sm danger', 'この名刺を削除'); del.type = 'button';
+  del.onclick = async () => {
+    if (!confirm(`「${it.company || ''} ${it.name || ''}」を削除します。\nシートの「削除済み」に残るので、間違えたときは戻せます。\nよろしいですか?`)) return;
+    del.disabled = true;
+    try {
+      await api({ action: 'delete', id: it.id, row: it.row });
+      allItems = allItems.filter(x => x !== it); listTotal = Math.max(0, listTotal - 1);
+      if (!$('q').value.trim()) store.set('total', String(listTotal));
+      renderList(); status('✅ 削除しました(シートの「削除済み」に残っています)');
+    } catch (e) {
+      status(/unknown action/i.test(e.message) ? '削除には、Code.gs の更新(v4以降)が必要です' : e.message, true);
+      del.disabled = false;
+    }
+  };
+  delRow.append(del); box.append(delRow);
+
   // メール文面と下書き
   if (it.body) {
     const l = el('div', 'sub', 'お礼メール文面' + (it.attach ? '(添付: ' + it.attach.replace(/\n/g, '、') + ')' : '')); l.style.marginTop = '10px';

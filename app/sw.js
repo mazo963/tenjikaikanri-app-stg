@@ -1,4 +1,4 @@
-const C = 'stg-v3';
+const C = 'stg-v4';
 const FILES = ['./', './index.html', './app.js', './manifest.json', './icons/icon.svg'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(C).then(c => c.addAll(FILES))); });
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C).map(k => caches.delete(k)))).then(() => self.clients.claim())));

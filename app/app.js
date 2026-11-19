@@ -366,15 +366,49 @@ $('btnReload').onclick = () => loadList();
 let qTimer = null;
 $('q').oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(loadList, 500); };
 
+const ST_ALL = ['未対応', 'メール送信済', '商談中', '受注', '見送り'];
+let allItems = [], listTotal = 0, stFilter = store.get('stf') || '';
+$('sortSel').value = store.get('sort') || 'new';
+$('sortSel').onchange = () => { store.set('sort', $('sortSel').value); renderList(); };
+
 async function loadList() {
   $('listInfo').textContent = '読み込み中…';
   try {
-    const j = await api({ action: 'list', q: $('q').value.trim(), limit: 50 });
+    const j = await api({ action: 'list', q: $('q').value.trim(), limit: 200 });
     statuses = j.statuses || []; listLoaded = true;
-    $('listInfo').textContent = `全${j.total}件中 ${j.items.length}件を表示(新しい順)`;
-    $('listBox').innerHTML = '';
-    j.items.forEach(it => $('listBox').append(renderCard(it)));
+    allItems = j.items || []; listTotal = j.total || 0;
+    if (!$('q').value.trim()) store.set('total', String(listTotal));
+    renderList();
   } catch (e) { $('listInfo').textContent = e.message; }
+}
+function showTotal() { const t = store.get('total'); $('totalChip').textContent = t ? '全' + t + '件' : ''; }
+showTotal();
+const kanaKey = it => String(it.kana || it.name || '').replace(/\(推定\)/g, '').replace(/[\s\u3000]/g, '');
+const SORTS = {
+  new: (a, b) => (b.date || '').localeCompare(a.date || '') || b.row - a.row,
+  old: (a, b) => (a.date || '').localeCompare(b.date || '') || a.row - b.row,
+  temp: (a, b) => ({ '高': 0, '中': 1, '低': 2 }[a.temp] ?? 3) - ({ '高': 0, '中': 1, '低': 2 }[b.temp] ?? 3) || (b.date || '').localeCompare(a.date || ''),
+  name: (a, b) => kanaKey(a).localeCompare(kanaKey(b), 'ja'),
+  co: (a, b) => String(a.company || '').localeCompare(String(b.company || ''), 'ja')
+};
+function updateChips() {
+  const cnt = {}; allItems.forEach(it => { const s = it.status || '未対応'; cnt[s] = (cnt[s] || 0) + 1; });
+  $('stChips').innerHTML = '';
+  [['', 'すべて ' + allItems.length], ...ST_ALL.map(s => [s, s + ' ' + (cnt[s] || 0)])].forEach(([v, t]) => {
+    const b = el('button', 'sec' + (stFilter === v ? ' on' : ''), t); b.type = 'button';
+    b.onclick = () => { stFilter = v; store.set('stf', v); renderList(); };
+    $('stChips').append(b);
+  });
+}
+function renderList() {
+  showTotal(); updateChips();
+  const items = allItems.filter(it => !stFilter || (it.status || '未対応') === stFilter).sort(SORTS[$('sortSel').value] || SORTS.new);
+  const q = $('q').value.trim();
+  $('listInfo').textContent = `全${listTotal}件` + (q ? ` ・ 検索「${q}」${allItems.length}件` : '') + (stFilter ? ` ・ ${stFilter}` : '') + ` ・ ${items.length}件を表示` +
+    (listTotal > allItems.length && !q ? `(新しい${allItems.length}件まで読み込み)` : '');
+  $('listBox').innerHTML = '';
+  items.forEach(it => $('listBox').append(renderCard(it)));
+  if (!items.length) $('listBox').append(el('p', 'badge', '該当する名刺はありません'));
 }
 
 function dl(parent, label, value) { if (!value) return; parent.append(el('dt', '', label), el('dd', '', value)); }
@@ -416,7 +450,7 @@ function buildDetail(box, it) {
   const sel = el('select'); sel.style.marginTop = '8px';
   statuses.forEach(s => { const o = el('option', '', s); o.value = s; if (s === (it.status || '未対応')) o.selected = true; sel.append(o); });
   sel.onchange = async () => {
-    try { await api({ action: 'setStatus', id: it.id, row: it.row, status: sel.value }); it.status = sel.value; status('対応状況を更新しました'); }
+    try { await api({ action: 'setStatus', id: it.id, row: it.row, status: sel.value }); it.status = sel.value; updateChips(); status('対応状況を更新しました'); }
     catch (e) { status(e.message, true); }
   };
   const sl = el('div', 'sub', '対応状況'); sl.style.marginTop = '8px';
